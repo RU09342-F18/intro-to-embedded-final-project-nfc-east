@@ -1,12 +1,17 @@
 #include <msp430.h>
 
-int duty = 1000;
 int security = 0;
 int byte = 0;
-float first_byte = 0;
-float second_byte = 0;
-float third_byte = 0;
-float fourth_byte = 0;
+int go = 0;
+int first_byte = 0;
+int second_byte = 0;
+int third_byte = 0;
+int fourth_byte = 0;
+int fifth_byte = 0;
+int admin_byte = 204;
+int encrypted1 = 0;
+int encrypted2 = 0;
+int encrypted3 = 0;
 
 void UART_initialization()
 {
@@ -17,6 +22,38 @@ void UART_initialization()
     UCA1BR1 = 0;                              // High byte of baud-rate generator
     UCA1CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
     UCA1IE |= UCRXIE;                         // Enable USCI_A1 RX interrupt
+}
+
+void granted(); 
+{
+    
+}
+
+void denied(); 
+{
+    
+}
+
+void security_algorithm()
+{
+    encrypted1 = first_byte + third_byte;
+    encrypted2 = second_byte + fourth_byte;
+    encrypted3 = (5 * encrypted1) - (4 * encrypted2);
+    if (fifth_byte == admin_byte) 
+    {
+        security = encrypted3; 
+    }
+    else 
+    {
+        if (encrypted3 != security) 
+        {
+            denied(); 
+        }
+        else 
+        {
+            granted(); 
+        }
+    }
 }
 
 int main(void)
@@ -30,11 +67,6 @@ int main(void)
     TA2CCR2 = 200;
     TA2CCTL2 = OUTMOD_7; // CCR1 toggle/set
 
-    /*while (security == 1)
-    {
-        duty = duty + 5;
-    }*/
-
     __bis_SR_register(LPM0_bits + GIE);       // Enter LPM3, interrupts enabled
     __no_operation();                         // For debugger
 }
@@ -47,29 +79,33 @@ __interrupt void USCI_A1_ISR(void)
     {
     case 0:
         first_byte = UCA1RXBUF;
-        UCA0IE |= ~UCRXIE;                         // Disable USCI_A0 RX interrupt
         break;
     case 1:
         second_byte = UCA1RXBUF;
-        UCA0IE |= ~UCRXIE;                         // Disable USCI_A0 RX interrupt
         break;
     case 2:
         third_byte = UCA1RXBUF;
-        UCA0IE |= ~UCRXIE;                         // Disable USCI_A0 RX interrupt
         break;
     case 3:
         fourth_byte = UCA1RXBUF;
-        UCA0IE |= ~UCRXIE;                         // Disable USCI_A0 RX interrupt
+    case 4:
+        fifth_byte = UCA1RXBUF;
+        UCA1IE |= ~UCRXIE;
     default:
         break;
     }
 
-    if (byte != 4)
+    if (go == 1)
     {
-        byte++;
+        security_algorithm();
+    }
+
+    if (byte == 4)
+    {
+        go = 1;
     }
     else
     {
-        byte = 0;
+        byte += 1;
     }
 }
