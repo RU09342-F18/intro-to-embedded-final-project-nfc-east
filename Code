@@ -1,13 +1,14 @@
 #include <msp430.h>
 
-int security = 291;
-int byte = 0;
+int security = 291; //Accepted user ID calculated number
+int byte = 0; //Counter byte variable
 int first_byte = 0;
 int second_byte = 0;
 int third_byte = 0;
 int fourth_byte = 0;
 int fifth_byte = 0;
-int admin_byte = 204;
+int admin_byte = 204; //Decimal value of 0xCC (Hex) administrator password
+//Encryted variables
 int encrypted1 = 0;
 int encrypted2 = 0;
 int encrypted3 = 0;
@@ -16,40 +17,40 @@ int encrypted3 = 0;
 void UART_init()
 {
     P4SEL |= BIT4+BIT5;                       // P4.4,5 = USCI_A1 TXD/RXD
-    UCA1CTL1 |= UCSWRST;                      // **Put state machine in reset**
+    UCA1CTL1 |= UCSWRST;                      // Put state machine in reset
     UCA1CTL1 |= UCSSEL_2;                     // USCI clock source select, SMCLK
     UCA1BR0 = 104;                            // Low byte of baud-rate generator, prescalar setting for 9600 baud rate
     UCA1BR1 = 0;                              // High byte of baud-rate generator
-    UCA1CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
+    UCA1CTL1 &= ~UCSWRST;                     // Initialize USCI state machine
     UCA1IE |= UCRXIE;                         // Enable USCI_A1 RX interrupt
 }
 
 void TimerA_init()
 {
-    TA2CTL = TASSEL_2 + MC_1 + TACLR; // SMCLK, up-down mode, clear
-    TA2CCR0 = 20000; // PWM Period
-    TA2CCR2 = 2500;
-    TA2CCTL2 = OUTMOD_7; // CCR1 toggle/set
+    TA2CTL = TASSEL_2 + MC_1 + TACLR; // SMCLK, up-down mode, clears timer
+    TA2CCR0 = 20000; // PWM Period of 20 ms
+    TA2CCR2 = 2500; //Duty Cycle of 12.5%
+    TA2CCTL2 = OUTMOD_7; // CCR2 toggle/set Hardware PWM
 }
 
 void security_algorithm()
 {
-    encrypted1 = first_byte + third_byte;
-    encrypted2 = second_byte + fourth_byte;
-    encrypted3 = (5 * encrypted1) - (4 * encrypted2);
+    encrypted1 = first_byte + third_byte; //Adds decimal value of 1st and 3rd byte of ID
+    encrypted2 = second_byte + fourth_byte; //Adds decimal value of 2nd and 4th byte of ID
+    encrypted3 = (5 * encrypted1) - (4 * encrypted2); //Calculation for final number for comparison
 }
 
 int main(void)
 {
     WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
-    UART_init();
-    TimerA_init();
-    P2DIR |= BIT5; //P2.0 output
-    P2SEL |= BIT5; //2.0 TA1
-    P1DIR |= BIT6; //assigns BIT6 to have an output direction
-    P1SEL |= ~BIT6; //assigns value of 0 to Pin6 in P1SEL SFR
+    UART_init(); //Function call for UART initialization
+    TimerA_init(); //Function call for PWM initialization
+    P2DIR |= BIT5; //P2.5 output direction
+    P2SEL |= BIT5; //P2.5 peripheral function selected
+    P1DIR |= BIT6; //P1.6 to have an output direction
+    P1SEL |= ~BIT6; //P1.6 to have general I/O function
 
-    __bis_SR_register(LPM0_bits + GIE);       // Enter LPM3, interrupts enabled
+    __bis_SR_register(LPM0_bits + GIE);       // Enter low power mode, global interrupts enabled
     __no_operation();                         // For debugger
 }
 
@@ -57,65 +58,66 @@ int main(void)
 #pragma vector=USCI_A1_VECTOR
 __interrupt void USCI_A1_ISR(void)
 {
+    //Case statement for byte input
     switch(byte)
     {
     case 0:
-        first_byte = UCA1RXBUF;
-        TA2CCR2 = 2500;
-        UCA1TXBUF = 0x2E;
-        P1OUT = BIT6;
+        first_byte = UCA1RXBUF; //First byte enters Rx buffer
+        TA2CCR2 = 2500; //Reset Motor to off state
+        UCA1TXBUF = 0x2E; //Transmits a period in ASCII
+        P1OUT = BIT6; //Switches LED state to off/RED
         break;
     case 1:
-        second_byte = UCA1RXBUF;
+        second_byte = UCA1RXBUF; //Second byte enters Rx buffer
         break;
     case 2:
-        third_byte = UCA1RXBUF;
+        third_byte = UCA1RXBUF; //Third byte enters Rx buffer
         break;
     case 3:
-        fourth_byte = UCA1RXBUF;
+        fourth_byte = UCA1RXBUF; //Fourth byte enters Rx buffer
         break;
     case 4:
-        fifth_byte = UCA1RXBUF;
+        fifth_byte = UCA1RXBUF; //Fifth byte enters Rx buffer
         break;
     default:
         break;
     }
-    if (byte < 4)
+    if (byte < 4) //Only ID bytes
     {
-       security_algorithm();
-       byte += 1;
+       security_algorithm(); //Perform security algorithm
+       byte += 1; //Increments byte counter
     }
-    else if (byte == 4)
+    else if (byte == 4) //Admin byte attempt
     {
-        if (admin_byte == fifth_byte)
+        if (admin_byte == fifth_byte)  //If successful
         {
-            security = encrypted3;
-            TA2CCR2 = 150;
-            P1OUT ^= BIT6;
-            byte = 0;
-            UCA1TXBUF = 67;
+            security = encrypted3; //Security variable takes the new ID's encrypted number
+            TA2CCR2 = 150; //Motor turns on
+            P1OUT ^= BIT6; //Turns green LED on
+            byte = 0; //Resets byte counter variable
+            UCA1TXBUF = 67; //Transmits letter "C" for changed ID in ASCII
         }
     }
     else
     {
-       byte = 0;
+       byte = 0; //Resets byte variable if unsuccessful
     }
 
-    if (byte > 3)
+    if (byte > 3) //Byte incremented, still on ID check
     {
-        if (encrypted3 == security)
+        if (encrypted3 == security) //If ID matches
         {
-            while (!(UCA0IFG&UCTXIFG));             // USCI_A0 TX buffer ready?
+            while (!(UCA0IFG&UCTXIFG)); // USCI_A0 TX buffer ready?
             {
-                UCA1TXBUF = 71;
+                UCA1TXBUF = 71; //Transmit letter "G" for granted access in ASCII
             }
-            TA2CCR2 = 150;
-            P1OUT ^= BIT6;
-            byte = 0;
+            TA2CCR2 = 150; //Turns motor on
+            P1OUT ^= BIT6; //Turns green LED on
+            byte = 0; //Resets byte counter variable
         }
-        else
+        else //If ID doesn't match
         {
-            UCA1TXBUF = 68;
+            UCA1TXBUF = 68; //Transmits letter "D" for denied access in ASCII
         }
     }
 }
