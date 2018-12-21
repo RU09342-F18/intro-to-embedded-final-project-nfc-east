@@ -12,8 +12,11 @@ This part of the system includes multiple outputs. One, if the correct ID is inp
 ### Arduino Uno/PN532 Breakout Board 
 The NFC information from the student ID is displayed on Arduino serial monitor. The library will display a sequence of four bytes corresponding to the specific ID in the format (0xFF 0xFF 0xFF 0xFF). The table below shows the connections between the PN532 and Arduino Uno via jumper cables. 
 
-| Arduino Uno | PN532 Breakout Board |
+PN532 Breakout Board | Arduino Uno |
 | --- | --- |
 | GND | GND |
 | 5V | 5V |
-
+| SDA  | A4 |
+| SCL | A5 |
+| RSTO  | 3 |
+| IRQ | 2 |
