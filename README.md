@@ -10,10 +10,10 @@ This system includes two parts. The PN532 breakout board communicates with the A
 ### MSP430F5529 
 This part of the system includes multiple outputs. One, if the correct ID is inputted, a servo motor will activate and spin until another byte is sent. Once another byte is entered, the servo motor will stop. The servo motor is PWM controlled via P2.5 using the hardware capabilities of TimerA2. Two, via a GPIO pin on P1.6, two LEDs, red and green, are powered from a 5 V source using a converto box. The red LED is powered on when the system is not activated, or a correct ID or administrator byte is inputted. The green LED is powered on when the correct ID or administrator byte is inputted. Three, a series of characters are transmitted over UART back to the Realterm serial program. In the code, P4.4 and P4.5 are initialized, which are the UART Tx and Rx pins that communicate to a PC via USB. If an incorrect ID is entered, the letter "D" is displayed for denied access. If the correct ID is entered, the letter "G" is displayed for granted access. If the administrator byte is entered, the letter "C" is displayed for changed ID. 
 ### Arduino Uno/PN532 Breakout Board 
-The NFC information from the student ID is displayed on Arduino serial monitor. The library will display a sequence of four bytes corresponding to the specific ID in the format (0xFF 0xFF 0xFF 0xFF). 
+The NFC information from the student ID is displayed on Arduino serial monitor. The library will display a sequence of four bytes corresponding to the specific ID in the format (0xFF 0xFF 0xFF 0xFF). The table below shows the connections between the PN532 and Arduino Uno via jumper cables. 
 
-| Command | Description |
+| Arduino Uno | PN532 Breakout Board |
 | --- | --- |
-| git status | List all new or modified files |
-| git diff | Show file differences that haven't been staged |
+| GND | GND |
+| 5V | 5V |
 
